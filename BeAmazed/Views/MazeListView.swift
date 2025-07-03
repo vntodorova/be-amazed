@@ -13,14 +13,16 @@ struct MazeListView: View {
     @StateObject private var viewModel = MazeListViewModel()
     
     var body: some View {
-        Group {
+        NavigationStack {
             if let error = viewModel.errorMessage {
                 Text(error)
                     .foregroundColor(.red)
                     .padding()
             } else {
                 List(viewModel.mazes, id: \.url) { maze in
-                    MazeRowView(maze: maze)
+                    NavigationLink(destination: MazeDetailView(maze: maze)) {
+                        MazeRowView(maze: maze)
+                    }
                 }
             }
         }
