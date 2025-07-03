@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MazeRowView: View {
     
-    let maze: Maze
+    let maze: MazeData
     
     var body: some View {
         HStack {

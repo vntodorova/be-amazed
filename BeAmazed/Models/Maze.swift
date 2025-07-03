@@ -6,7 +6,7 @@
 //
 import Foundation
 
-struct Maze: Decodable, Hashable {
+struct MazeData: Decodable, Hashable {
     let name: String
     let description: String
     let url: URL

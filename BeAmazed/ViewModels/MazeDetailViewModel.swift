@@ -6,6 +6,29 @@
 //
 import SwiftUI
 
+struct Maze {
+    let mazeMap: [[Int]]
+    let startBlock: MazeBlock
+    let endBlock: MazeBlock
+    let blockSize: Int
+}
+
+struct MazePosition: Hashable {
+    let row: Int
+    let col: Int
+}
+
+struct MazeBlock {
+    let minRow: Int
+    let maxRow: Int
+    let minCol: Int
+    let maxCol: Int
+    
+    func contains(_ pos: MazePosition) -> Bool {
+        return pos.row >= minRow && pos.row <= maxRow && pos.col >= minCol && pos.col <= maxCol
+    }
+}
+
 @MainActor
 class MazeDetailViewModel: ObservableObject {
     
@@ -14,36 +37,40 @@ class MazeDetailViewModel: ObservableObject {
     @Published var displayImage: UIImage?
     
     func loadMazeAndFindPath(from url: URL) async {
-        guard let image = await loadMaze(from: url) else {
+        guard let image = await loadMazeImage(from: url) else {
+            errorMessage = "Failed to load maze"
             return
         }
         
         displayImage = image
         
-        extractMaze(from: image)
+        guard let maze = extractMaze(from: image) else {
+            errorMessage = "Failed to extract maze"
+            return
+        }
         
+        let shortestPath = findShortestPath(in: maze.mazeMap, startBlock: maze.startBlock, endBlock: maze.endBlock)
+        
+        displayImage = drawPathOverlay(on: image, path: shortestPath, blockSize: maze.blockSize)
     }
     
-    private func loadMaze(from url: URL) async -> UIImage? {
+    private func loadMazeImage(from url: URL) async -> UIImage? {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             
             guard let image = UIImage(data: data) else {
-                errorMessage = "Failed to decode image."
                 return nil
             }
             
             return image
         } catch {
-            errorMessage = "Image couldn't download: \(error.localizedDescription)"
             return nil
         }
     }
     
-    private func extractMaze(from image: UIImage) {
+    private func extractMaze(from image: UIImage) -> Maze? {
         guard let cgImage = image.cgImage else {
-            errorMessage = "Failed to decode image."
-            return
+            return nil
         }
         
         let width = cgImage.width
@@ -55,17 +82,22 @@ class MazeDetailViewModel: ObservableObject {
             let blueRectBounds = detectDotBoundingBox(pixelData: pixelData, width: width, height: height, targetColor: Constants.blueColor),
             let redRectBounds = detectDotBoundingBox(pixelData: pixelData, width: width, height: height, targetColor: Constants.redColor)
         else {
-            errorMessage = "No start/finish detected."
-            return
+            return nil
         }
         
         let mazePathWidth = min(blueRectBounds.width, blueRectBounds.height, redRectBounds.width, redRectBounds.height)
         
-        let blockSize = (mazePathWidth / 3 <= 1) ? 1 : Int(mazePathWidth) / 2
+        let blockSize = (mazePathWidth / 2 <= 1) ? 1 : Int(mazePathWidth) / 2
         
-        let pixelBlockMap = getPixelMap(from: cgImage, blockSize: blockSize, pixelData: pixelData)
+        let mazeMap = getMazeMap(from: cgImage, blockSize: blockSize, pixelData: pixelData)
         
-        displayImage = drawOverlay(on: image, from: pixelBlockMap, blockSize: blockSize)
+        let mazeRowsCount = mazeMap.count
+        let mazeColsCount = mazeMap[0].count
+                
+        let blueMazeBlock = mapBoundingBoxToMazeGrid(boundingBox: blueRectBounds, blockSize: blockSize, mazeRows: mazeRowsCount, mazeCols: mazeColsCount)
+        let redMazeBlock = mapBoundingBoxToMazeGrid(boundingBox: redRectBounds, blockSize: blockSize, mazeRows: mazeRowsCount, mazeCols: mazeColsCount)
+
+        return Maze(mazeMap: mazeMap, startBlock: blueMazeBlock, endBlock: redMazeBlock, blockSize: blockSize)
     }
     
     func detectDotBoundingBox(pixelData: [UInt8], width: Int, height: Int, targetColor: (r: UInt8, g: UInt8, b: UInt8)) -> CGRect? {
@@ -105,7 +137,7 @@ class MazeDetailViewModel: ObservableObject {
         abs(Int(b) - Int(targetColor.b)) <= 0
     }
     
-    private func getPixelMap(from cgImage: CGImage, blockSize: Int, pixelData: [UInt8]) -> [[Int]] {
+    private func getMazeMap(from cgImage: CGImage, blockSize: Int, pixelData: [UInt8]) -> [[Int]] {
         let width = cgImage.width
         let height = cgImage.height
         
@@ -162,6 +194,95 @@ class MazeDetailViewModel: ObservableObject {
         
         return pixelData
     }
+    
+    func mapBoundingBoxToMazeGrid(
+        boundingBox: CGRect,
+        blockSize: Int,
+        mazeRows: Int,
+        mazeCols: Int
+    ) -> MazeBlock {
+        let minCol = max(0, Int(boundingBox.minX) / blockSize)
+        let maxCol = min(mazeCols - 1, Int(boundingBox.maxX) / blockSize)
+        
+        let minRow = max(0, Int(boundingBox.minY) / blockSize)
+        let maxRow = min(mazeRows - 1, Int(boundingBox.maxY) / blockSize)
+        
+        return MazeBlock(minRow: minRow, maxRow: maxRow, minCol: minCol, maxCol: maxCol)
+    }
+    
+    func findShortestPath(
+        in mazeMap: [[Int]],
+        startBlock: MazeBlock,
+        endBlock: MazeBlock
+    ) -> [MazePosition] {
+        let rows = mazeMap.count
+        let cols = mazeMap[0].count
+        
+        guard rows > 0, cols > 0 else { return [] }
+        
+        var visited = Set<MazePosition>()
+        
+        var queue = [(MazePosition, [MazePosition])]()
+        
+        for row in startBlock.minRow...startBlock.maxRow {
+            for col in startBlock.minCol...startBlock.maxCol {
+                let pos = MazePosition(row: row, col: col)
+                if mazeMap[row][col] == 0 {
+                    queue.append((pos, [pos]))
+                    visited.insert(pos)
+                }
+            }
+        }
+        
+        let directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        
+        while !queue.isEmpty {
+            let (current, path) = queue.removeFirst()
+            
+            if endBlock.contains(current) {
+                return path
+            }
+            
+            for dir in directions {
+                let newRow = current.row + dir.0
+                let newCol = current.col + dir.1
+                let neighbor = MazePosition(row: newRow, col: newCol)
+                
+                if newRow >= 0, newRow < rows,
+                   newCol >= 0, newCol < cols,
+                   mazeMap[newRow][newCol] == 0,
+                   !visited.contains(neighbor) {
+                    visited.insert(neighbor)
+                    queue.append((neighbor, path + [neighbor]))
+                }
+            }
+        }
+        
+        return []
+    }
+    
+    func drawPathOverlay(on baseImage: UIImage, path: [MazePosition], blockSize: Int, pathColor: UIColor = .green) -> UIImage? {
+        let renderer = UIGraphicsImageRenderer(size: baseImage.size)
+        
+        let image = renderer.image { context in
+            baseImage.draw(at: .zero)
+            
+            context.cgContext.setFillColor(pathColor.cgColor)
+            
+            for position in path {
+                let rect = CGRect(
+                    x: CGFloat(position.col * blockSize),
+                    y: CGFloat(position.row * blockSize),
+                    width: CGFloat(blockSize),
+                    height: CGFloat(blockSize)
+                )
+                context.fill(rect)
+            }
+        }
+        
+        return image
+    }
+    
     
     //ONLY FOR DEBUG
     private func drawOverlay(on baseImage: UIImage, from map: [[Int]], blockSize: Int) -> UIImage? {

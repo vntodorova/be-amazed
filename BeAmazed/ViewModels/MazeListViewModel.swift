@@ -12,7 +12,7 @@ private let mazesURL = "https://downloads-secured.bluebeam.com/homework/mazes"
 @MainActor
 class MazeListViewModel: ObservableObject {
     
-    @Published var mazes: [Maze] = []
+    @Published var mazes: [MazeData] = []
     
     @Published var errorMessage: String? = nil
     

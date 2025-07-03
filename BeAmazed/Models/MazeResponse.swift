@@ -6,5 +6,5 @@
 //
 
 struct MazeResponse: Decodable {
-    let list: [Maze]
+    let list: [MazeData]
 }

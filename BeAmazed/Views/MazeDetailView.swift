@@ -9,7 +9,7 @@ import SwiftUI
 struct MazeDetailView: View {
     @StateObject private var viewModel = MazeDetailViewModel()
     
-    let maze: Maze
+    let maze: MazeData
     
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
