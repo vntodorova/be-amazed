@@ -18,54 +18,30 @@ struct MazeDetailView: View {
     @State private var lastOffset: CGSize = .zero
     
     var body: some View {
-        AsyncImage(url: maze.url) { phase in
-            switch phase {
-            case .empty:
-                ProgressView()
-                
-            case .success(let image):
-                image
+        Group {
+            switch (viewModel.errorMessage, viewModel.displayImage) {
+            case let (error?, _):
+                Text(error)
+                    .foregroundColor(.red)
+                    .padding()
+            case (nil, let image?):
+                Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(minWidth: UIScreen.main.bounds.width)
                     .scaleEffect(scale)
-                                .offset(offset)
-                                .gesture(
-                                    SimultaneousGesture(
-                                        MagnificationGesture()
-                                            .onChanged { value in
-                                                let delta = value / lastScale
-                                                scale *= delta
-                                                lastScale = value
-                                                
-                                                if (scale <= 1) {
-                                                    scale = 1
-                                                    offset = .zero
-                                                }
-                                            }
-                                            .onEnded { _ in
-                                                lastScale = scale
-                                            },
-                                        DragGesture()
-                                            .onChanged { value in
-                                                offset = CGSize(width: lastOffset.width + value.translation.width,
-                                                                height: lastOffset.height + value.translation.height)
-                                            }
-                                            .onEnded { _ in
-                                                lastOffset = offset
-                                            }
-                                    )
-                                )
-                                .animation(.easeInOut, value: scale)
-                
-            case .failure:
-                Image(systemName: "exclamationmark.triangle")
-                    .foregroundColor(.red)
-                
-            @unknown default:
-                EmptyView()
+                    .offset(offset)
+                    .modifier(ZoomDragGesture(scale: $scale, lastScale: $lastScale, offset: $offset, lastOffset: $lastOffset))
+                    .animation(.easeInOut, value: scale)
+            case (nil, nil):
+                ProgressView()
             }
         }
         .navigationTitle(maze.name)
+        .onAppear {
+            Task {
+                await viewModel.loadMazeAndFindPath(from: maze.url)
+            }
+        }
     }
 }
