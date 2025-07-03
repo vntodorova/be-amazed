@@ -11,7 +11,7 @@ import SwiftUI
 struct BeAmazedApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MazeListView()
         }
     }
 }

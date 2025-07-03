@@ -1,0 +1,62 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+!default.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.xcuserdatad
+
+# Swift Package Manager
+.swiftpm
+.build/
+Packages/
+Package.resolved
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Archives
+*.xcarchive
+
+# SwiftPM Xcode Integration
+.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# Xcode automatic device support files
+DeviceSupport/
+
+# Previews cache
+*.preview-thumbnails
+*.preview-device-log
+
+# Editor config
+.idea/
+.vscode/
+*.swiftsymbolgraph
+
+# User-specific
+*.orig
+*.backup
+*.swp
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Tuist
+Tuist/Dependencies
