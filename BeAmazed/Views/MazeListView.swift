@@ -7,44 +7,22 @@
 
 import SwiftUI
 
+import SwiftUI
+
 struct MazeListView: View {
     @StateObject private var viewModel = MazeListViewModel()
     
     var body: some View {
-        List(viewModel.mazes, id: \.url) { maze in
-            HStack {
-                AsyncImage(url: maze.url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 60, height: 60)
-                        
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 60, height: 60)
-                            .cornerRadius(8)
-                        
-                    case .failure:
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundColor(.red)
-                            .frame(width: 60, height: 60)
-                        
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-                
-                VStack(alignment: .leading) {
-                    Text(maze.name)
-                        .font(.headline)
-                    Text(maze.description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+        Group {
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .foregroundColor(.red)
+                    .padding()
+            } else {
+                List(viewModel.mazes, id: \.url) { maze in
+                    MazeRowView(maze: maze)
                 }
             }
-            .padding(.vertical, 4)
         }
         .onAppear {
             Task {
