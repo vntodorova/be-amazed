@@ -4,8 +4,6 @@
 //
 //  Created by Veneta Todorova on 4.07.25.
 //
-
-
 import XCTest
 @testable import BeAmazed
 

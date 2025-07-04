@@ -7,7 +7,7 @@
 import SwiftUI
 
 struct MazeDetailView: View {
-    @StateObject private var viewModel = MazeDetailViewModel()
+    @StateObject private var viewModel = MazeDetailViewModel(storage: RealmManager())
     
     let maze: MazeData
     

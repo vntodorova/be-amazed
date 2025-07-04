@@ -9,14 +9,14 @@ import SwiftUI
 @MainActor
 class MazeDetailViewModel: ObservableObject {
     
-    private let realmManager: RealmManager
+    private let storage: MazeStorage
     
     @Published var errorMessage: String? = nil
     
     @Published var displayImage: UIImage?
     
-    init(realmManager: RealmManager = .shared) {
-        self.realmManager = realmManager
+    init(storage: MazeStorage) {
+        self.storage = storage
     }
     
     func loadMazeAndFindPath(from url: URL) async {
@@ -30,7 +30,7 @@ class MazeDetailViewModel: ObservableObject {
         let shortestPath: [MazePosition]
         let blockSize: Int
         
-        if let (savedShortestPath, savedBlockSize) = realmManager.loadPathFromRealm(forImageUrl: url.absoluteString) {
+        if let (savedShortestPath, savedBlockSize) = storage.loadShortestPath(forImageUrl: url.absoluteString) {
             shortestPath = savedShortestPath
             blockSize = savedBlockSize
         } else {
@@ -42,7 +42,7 @@ class MazeDetailViewModel: ObservableObject {
             shortestPath = Pathfinder().findShortestPath(in: maze.mazeMap, startBlock: maze.startBlock, endBlock: maze.endBlock)
             blockSize = maze.blockSize
             
-            realmManager.savePathToRealm(imageUrl: url.absoluteString, path: shortestPath, blockSize: blockSize)
+            storage.saveShortestPath(imageUrl: url.absoluteString, path: shortestPath, blockSize: blockSize)
         }
         
         displayImage = drawPathOverlay(on: image, path: shortestPath, blockSize: blockSize)
@@ -62,7 +62,7 @@ class MazeDetailViewModel: ObservableObject {
         }
     }
     
-    func drawPathOverlay(on baseImage: UIImage, path: [MazePosition], blockSize: Int, pathColor: UIColor = .green) -> UIImage? {
+    private func drawPathOverlay(on baseImage: UIImage, path: [MazePosition], blockSize: Int, pathColor: UIColor = .green) -> UIImage? {
         let renderer = UIGraphicsImageRenderer(size: baseImage.size)
         
         let image = renderer.image { context in

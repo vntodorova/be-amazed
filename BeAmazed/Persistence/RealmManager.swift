@@ -10,8 +10,11 @@ class RealmManager {
     static let shared = RealmManager()
     
     private let realm = try! Realm()
+}
+
+extension RealmManager : MazeStorage {
     
-    func savePathToRealm(imageUrl: String, path: [MazePosition], blockSize: Int) {
+    func saveShortestPath(imageUrl: String, path: [MazePosition], blockSize: Int) {
         let realm = try! Realm()
 
         let mazePathEntity = MazePathEntity(url: imageUrl, path: path, blockSize: blockSize)
@@ -21,7 +24,7 @@ class RealmManager {
         }
     }
     
-    func loadPathFromRealm(forImageUrl url: String) -> (positions: [MazePosition], blockSize: Int)? {
+    func loadShortestPath(forImageUrl url: String) -> (shortestPath: [MazePosition], blockSize: Int)? {
         let realm = try! Realm()
 
         guard let mazePathEntity = realm.object(ofType: MazePathEntity.self, forPrimaryKey: url) else {
@@ -30,4 +33,5 @@ class RealmManager {
 
         return mazePathEntity.toDomain()
     }
+    
 }
