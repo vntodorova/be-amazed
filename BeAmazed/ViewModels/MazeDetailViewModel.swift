@@ -6,35 +6,18 @@
 //
 import SwiftUI
 
-struct Maze {
-    let mazeMap: [[Int]]
-    let startBlock: MazeBlock
-    let endBlock: MazeBlock
-    let blockSize: Int
-}
-
-struct MazePosition: Hashable {
-    let row: Int
-    let col: Int
-}
-
-struct MazeBlock {
-    let minRow: Int
-    let maxRow: Int
-    let minCol: Int
-    let maxCol: Int
-    
-    func contains(_ pos: MazePosition) -> Bool {
-        return pos.row >= minRow && pos.row <= maxRow && pos.col >= minCol && pos.col <= maxCol
-    }
-}
-
 @MainActor
 class MazeDetailViewModel: ObservableObject {
+    
+    private let realmManager: RealmManager
     
     @Published var errorMessage: String? = nil
     
     @Published var displayImage: UIImage?
+    
+    init(realmManager: RealmManager = .shared) {
+        self.realmManager = realmManager
+    }
     
     func loadMazeAndFindPath(from url: URL) async {
         guard let image = await loadMazeImage(from: url) else {
@@ -44,14 +27,25 @@ class MazeDetailViewModel: ObservableObject {
         
         displayImage = image
         
-        guard let maze = extractMaze(from: image) else {
-            errorMessage = "Failed to extract maze"
-            return
+        let shortestPath: [MazePosition]
+        let blockSize: Int
+        
+        if let (savedShortestPath, savedBlockSize) = realmManager.loadPathFromRealm(forImageUrl: url.absoluteString) {
+            shortestPath = savedShortestPath
+            blockSize = savedBlockSize
+        } else {
+            guard let maze = extractMaze(from: image) else {
+                errorMessage = "Failed to extract maze"
+                return
+            }
+            
+            shortestPath = findShortestPath(in: maze.mazeMap, startBlock: maze.startBlock, endBlock: maze.endBlock)
+            blockSize = maze.blockSize
+            
+            realmManager.savePathToRealm(imageUrl: url.absoluteString, path: shortestPath, blockSize: blockSize)
         }
         
-        let shortestPath = findShortestPath(in: maze.mazeMap, startBlock: maze.startBlock, endBlock: maze.endBlock)
-        
-        displayImage = drawPathOverlay(on: image, path: shortestPath, blockSize: maze.blockSize)
+        displayImage = drawPathOverlay(on: image, path: shortestPath, blockSize: blockSize)
     }
     
     private func loadMazeImage(from url: URL) async -> UIImage? {
